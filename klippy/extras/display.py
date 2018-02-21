@@ -14,6 +14,8 @@ BACKGROUND_PRIORITY_CLOCK = 0x7fffffff00000000
 # HD44780 (20x4 text) lcd chip
 ######################################################################
 
+HD44780_DELAY = .000037
+
 class HD44780:
     def __init__(self, config):
         self.printer = config.get_printer()
@@ -27,14 +29,10 @@ class HD44780:
                 raise ppins.error("hd44780 all pins must be on same mcu")
             mcu = pin_params['chip']
             if pin_params['invert']:
-                raise pins.error("hd44780 can not invert pin")
+                raise ppins.error("hd44780 can not invert pin")
+        self.pins = [pin_params['pin'] for pin_params in pins]
         self.mcu = mcu
         self.oid = self.mcu.create_oid()
-        self.mcu.add_config_cmd(
-            "config_hd44780 oid=%d rs_pin=%s e_pin=%s"
-            " d4_pin=%s d5_pin=%s d6_pin=%s d7_pin=%s" % (
-                self.oid, pins[0]['pin'], pins[1]['pin'],
-                pins[2]['pin'], pins[3]['pin'], pins[4]['pin'], pins[5]['pin']))
         self.mcu.add_config_object(self)
         self.cmd_queue = self.mcu.alloc_command_queue()
         self.send_data_cmd = self.send_cmds_cmd = None
@@ -43,6 +41,12 @@ class HD44780:
         self.glyph_framebuffer = (bytearray(64), bytearray('~'*64), 0x40)
         self.framebuffers = [self.text_framebuffer, self.glyph_framebuffer]
     def build_config(self):
+        self.mcu.add_config_cmd(
+            "config_hd44780 oid=%d rs_pin=%s e_pin=%s"
+            " d4_pin=%s d5_pin=%s d6_pin=%s d7_pin=%s delay_ticks=%d" % (
+                self.oid, self.pins[0], self.pins[1],
+                self.pins[2], self.pins[3], self.pins[4], self.pins[5],
+                self.mcu.seconds_to_clock(HD44780_DELAY)))
         self.send_cmds_cmd = self.mcu.lookup_command(
             "hd44780_send_cmds oid=%c cmds=%*s")
         self.send_data_cmd = self.mcu.lookup_command(
