@@ -5,7 +5,6 @@
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import logging
-import pins
 
 BACKGROUND_PRIORITY_CLOCK = 0x7fffffff00000000
 
@@ -102,25 +101,24 @@ class HD44780:
 # ST7920 (128x64 graphics) lcd chip
 ######################################################################
 
+ST7920_DELAY = .000072
+
 class ST7920:
     def __init__(self, config):
         printer = config.get_printer()
         # pin config
-        cs_pin = pins.setup_pin(printer, 'digital_out', config.get('cs_pin'))
+        ppins = printer.lookup_object('pins')
+        cs_pin = ppins.setup_pin('digital_out', config.get('cs_pin'))
         cs_pin.setup_start_value(1, 1, is_static=True)
-        sclk_params = pins.get_printer_pins(printer).lookup_pin(
-            'digital_out', config.get('sclk_pin'))
-        sid_params = pins.get_printer_pins(printer).lookup_pin(
-            'digital_out', config.get('sid_pin'))
+        sclk_params = ppins.lookup_pin('digital_out', config.get('sclk_pin'))
+        sid_params = ppins.lookup_pin('digital_out', config.get('sid_pin'))
         if sid_params['invert'] or sclk_params['invert']:
-            raise pins.error("st7920 can not invert sclk or sid")
+            raise ppins.error("st7920 can not invert sclk or sid")
         if sid_params['chip'] is not sclk_params['chip']:
-            raise pins.error("st7920 sclk must be on same mcu as sid")
+            raise ppins.error("st7920 sclk must be on same mcu as sid")
+        self.sclk_pin, self.sid_pin = sclk_params['pin'], sid_params['pin']
         self.mcu = sclk_params['chip']
         self.oid = self.mcu.create_oid()
-        self.mcu.add_config_cmd(
-            "config_st7920 oid=%u sclk_pin=%s sid_pin=%s" % (
-                self.oid, sclk_params['pin'], sid_params['pin']))
         self.mcu.add_config_object(self)
         self.cmd_queue = self.mcu.alloc_command_queue()
         self.send_data_cmd = self.send_cmds_cmd = None
@@ -132,6 +130,10 @@ class ST7920:
         self.framebuffers = ([self.text_framebuffer, self.glyph_framebuffer]
                              + self.graphics_framebuffers)
     def build_config(self):
+        self.mcu.add_config_cmd(
+            "config_st7920 oid=%u sclk_pin=%s sid_pin=%s delay_ticks=%d" % (
+                self.oid, self.sclk_pin, self.sid_pin,
+                self.mcu.seconds_to_clock(ST7920_DELAY)))
         self.send_cmds_cmd = self.mcu.lookup_command(
             "st7920_send_cmds oid=%c cmds=%*s")
         self.send_data_cmd = self.mcu.lookup_command(
