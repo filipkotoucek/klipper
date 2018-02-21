@@ -40,7 +40,7 @@ class HD44780:
         self.send_data_cmd = self.send_cmds_cmd = None
         # framebuffers
         self.text_framebuffer = (bytearray(' '*80), bytearray('~'*80), 0x80)
-        self.glyph_framebuffer = (bytearray([0]*64), bytearray('~'*64), 0x40)
+        self.glyph_framebuffer = (bytearray(64), bytearray('~'*64), 0x40)
         self.framebuffers = [self.text_framebuffer, self.glyph_framebuffer]
     def build_config(self):
         self.send_cmds_cmd = self.mcu.lookup_command(
@@ -122,12 +122,11 @@ class ST7920:
         self.send_data_cmd = self.send_cmds_cmd = None
         # framebuffers
         self.text_framebuffer = (bytearray(' '*64), bytearray('~'*64), 0x80)
-        self.glyph_framebuffer = (bytearray([0]*128), bytearray('~'*128), 0x40)
-        self.graphics_framebuffers = [(bytearray([0]*32), bytearray('~'*32), i)
+        self.glyph_framebuffer = (bytearray(128), bytearray('~'*128), 0x40)
+        self.graphics_framebuffers = [(bytearray(32), bytearray('~'*32), i)
                                       for i in range(32)]
         self.framebuffers = ([self.text_framebuffer, self.glyph_framebuffer]
                              + self.graphics_framebuffers)
-        self.zero_graphics = bytearray([0]*32)
     def build_config(self):
         self.send_cmds_cmd = self.mcu.lookup_command(
             "st7920_send_cmds oid=%c cmds=%*s")
@@ -193,8 +192,9 @@ class ST7920:
         self.graphics_framebuffers[gfx_fb][0][x:x+len(data)] = data
     def clear(self):
         self.text_framebuffer[0][:] = ' '*64
+        zeros = bytearray(32)
         for new_data, old_data, fb_id in self.graphics_framebuffers:
-            new_data[:] = self.zero_graphics
+            new_data[:] = zeros
 
 
 ######################################################################
