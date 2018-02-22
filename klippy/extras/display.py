@@ -108,16 +108,17 @@ class ST7920:
         printer = config.get_printer()
         # pin config
         ppins = printer.lookup_object('pins')
-        cs_pin = ppins.setup_pin('digital_out', config.get('cs_pin'))
-        cs_pin.setup_start_value(1, 1, is_static=True)
-        sclk_params = ppins.lookup_pin('digital_out', config.get('sclk_pin'))
-        sid_params = ppins.lookup_pin('digital_out', config.get('sid_pin'))
-        if sid_params['invert'] or sclk_params['invert']:
-            raise ppins.error("st7920 can not invert sclk or sid")
-        if sid_params['chip'] is not sclk_params['chip']:
-            raise ppins.error("st7920 sclk must be on same mcu as sid")
-        self.sclk_pin, self.sid_pin = sclk_params['pin'], sid_params['pin']
-        self.mcu = sclk_params['chip']
+        pins = [ppins.lookup_pin('digital_out', config.get(name + '_pin'))
+                for name in ['cs', 'sclk', 'sid']]
+        mcu = None
+        for pin_params in pins:
+            if mcu is not None and pin_params['chip'] != mcu:
+                raise ppins.error("st7920 all pins must be on same mcu")
+            mcu = pin_params['chip']
+            if pin_params['invert']:
+                raise ppins.error("st7920 can not invert pin")
+        self.pins = [pin_params['pin'] for pin_params in pins]
+        self.mcu = mcu
         self.oid = self.mcu.create_oid()
         self.mcu.add_config_object(self)
         self.cmd_queue = self.mcu.alloc_command_queue()
@@ -131,8 +132,9 @@ class ST7920:
                              + self.graphics_framebuffers)
     def build_config(self):
         self.mcu.add_config_cmd(
-            "config_st7920 oid=%u sclk_pin=%s sid_pin=%s delay_ticks=%d" % (
-                self.oid, self.sclk_pin, self.sid_pin,
+            "config_st7920 oid=%u cs_pin=%s sclk_pin=%s sid_pin=%s"
+            " delay_ticks=%d" % (
+                self.oid, self.pins[0], self.pins[1], self.pins[2],
                 self.mcu.seconds_to_clock(ST7920_DELAY)))
         self.send_cmds_cmd = self.mcu.lookup_command(
             "st7920_send_cmds oid=%c cmds=%*s")
