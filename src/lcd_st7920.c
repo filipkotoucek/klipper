@@ -69,6 +69,9 @@ command_config_st7920(uint32_t *args)
     s->sclk = gpio_out_setup(args[1], 0);
     s->sid = gpio_out_setup(args[2], 0);
 
+    s->cmd_wait_ticks = args[3];
+    return;
+
     // Calibrate cmd_wait_ticks
     irq_disable();
     uint32_t start = timer_read_time();
@@ -79,6 +82,7 @@ command_config_st7920(uint32_t *args)
     uint32_t diff = end - start, delay_ticks = args[3];
     if (diff < delay_ticks)
         s->cmd_wait_ticks = delay_ticks - diff;
+    output("diff %u %u", diff, s->cmd_wait_ticks);
 }
 DECL_COMMAND(command_config_st7920,
              "config_st7920 oid=%c sclk_pin=%u sid_pin=%u delay_ticks=%u");
