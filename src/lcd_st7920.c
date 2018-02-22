@@ -48,10 +48,9 @@ st7920_xmit(struct st7920 *s, uint8_t count, uint8_t *cmds)
     uint32_t last_cmd_time=s->last_cmd_time, cmd_wait_ticks=s->cmd_wait_ticks;
     while (count--) {
         uint8_t cmd = *cmds++;
-        st7920_xmit_byte(s, cmd & 0xf0);
-        // Can't complete transfer until delay complete
         while (timer_read_time() - last_cmd_time < cmd_wait_ticks)
             irq_poll();
+        st7920_xmit_byte(s, cmd & 0xf0);
         st7920_xmit_byte(s, cmd << 4);
         last_cmd_time = timer_read_time();
     }
@@ -73,6 +72,7 @@ command_config_st7920(uint32_t *args)
     // Calibrate cmd_wait_ticks
     irq_disable();
     uint32_t start = timer_read_time();
+    st7920_xmit_byte(s, 0);
     st7920_xmit_byte(s, 0);
     uint32_t end = timer_read_time();
     irq_enable();
